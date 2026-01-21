@@ -449,7 +449,7 @@ async def dpmbt6(ctx):
             async with session.get(API_URL, timeout=10) as r:
                 if r.status != 200:
                     return await ctx.send(f"❌ Hiba az API lekéréskor: {r.status}")
-                text = await r.text(encoding="utf-8-sig")  # BOM kezelése
+                text = await r.text(encoding="utf-8-sig")
                 data = json.loads(text)
         except Exception as e:
             return await ctx.send(f"❌ Hiba az API lekéréskor: {e}")
@@ -457,13 +457,12 @@ async def dpmbt6(ctx):
         vehicles = data.get("Vehicles", [])
         for v in vehicles:
             vehicle_label = str(v.get("ID", ""))
-            trip_id = str(v.get("Course", "Unknown"))     # Forgalmi
+            trip_id = str(v.get("Course", "Unknown"))
             line = v.get("LineName", "Ismeretlen")
             dest = v.get("FinalStopName", "Ismeretlen")
             lat = v.get("Lat")
             lon = v.get("Lng")
 
-            # Csak T6-osok
             if not is_t6(vehicle_label):
                 continue
             if lat is None or lon is None:
@@ -480,48 +479,48 @@ async def dpmbt6(ctx):
     if not active:
         return await ctx.send("🚫 Nincs aktív T6A5 villamos.")
 
-    # EMBED DARABOLÁS
-MAX_FIELDS = 20
-embeds = []
-embed = discord.Embed(title="🚋 Aktív T6A5 villamosok", color=0xff0000)
-field_count = 0
+    MAX_FIELDS = 20
+    embeds = []
+    embed = discord.Embed(title="🚋 Aktív T6A5 villamosok", color=0xff0000)
+    field_count = 0
 
-for reg, i in sorted(active.items(), key=lambda x: int(x[0])):
-    if field_count >= MAX_FIELDS:
-        embeds.append(embed)
-        embed = discord.Embed(
-            title="🚋 Aktív T6A5 villamosok (folytatás)",
-            color=0xff0000
+    for reg, i in sorted(active.items(), key=lambda x: int(x[0])):
+        if field_count >= MAX_FIELDS:
+            embeds.append(embed)
+            embed = discord.Embed(
+                title="🚋 Aktív T6A5 villamosok (folytatás)",
+                color=0xff0000
+            )
+            field_count = 0
+
+        value_text = (
+            f"Vonal: {i['line']}\n"
+            f"Forgalmi: {i['trip']}\n"
+            f"Cél: {i['dest']}"
         )
-        field_count = 0
 
-    value_text = (
-        f"Vonal: {i['line']}\n"
-        f"Forgalmi: {i['trip']}\n"
-        f"Cél: {i['dest']}"
-    )
+        try:
+            reg_num = int(reg)
+            if 1221 <= reg_num <= 1248:
+                value_text += "\n*🛠️ Tervezett kivonás: 2026. tavasz*"
+        except ValueError:
+            pass
 
-    # 1221–1248 közötti kocsiknál extra sor
-    try:
-        reg_num = int(reg)
-        if 1221 <= reg_num <= 1248:
-            value_text += "\n*🛠️ Tervezett kivonás: 2026. tavasz*"
-    except ValueError:
-        pass
+        embed.add_field(
+            name=f"{reg}",
+            value=value_text,
+            inline=False
+        )
+        field_count += 1
 
-    embed.add_field(
-        name=f"{reg}",
-        value=value_text,
-        inline=False
-    )
-    field_count += 1
+    # Csak akkor adjuk hozzá az utolsó embedet, ha nem üres
+    if embed.fields:
+        embeds.append(embed)
 
-# Csak akkor add hozzá az utolsó embedet, ha nem üres
-if embed.fields:
-    embeds.append(embed)
+    # KÜLDÉS ASZINKRON FÜGGVÉNYEN BELÜL
+    for e in embeds:
+        await ctx.send(embed=e)
 
-for e in embeds:
-    await ctx.send(embed=e)
 
 
 @bot.command()
