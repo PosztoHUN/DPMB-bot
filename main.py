@@ -63,8 +63,18 @@ def is_t3(reg):
     """1500–1699 T3 villamosok"""
     try:
         n = int(reg)
-        return 1500 <= n <= 1699
-    except:
+        return n in {
+            1604, 1606, 1607, 1608, 1611, 1613, 1614, 1619,
+            1631, 1634, 1639, 1640, 1651, 1652,
+            1517, 1558, 1561, 1603,
+            1653, 1654, 1655, 1656, 1657, 1658,
+            1564, 1576, 1583, 1587, 1589, 1620, 1628, 1629,
+            1661, 1662, 1663, 1664, 1665, 1666,
+            1615,
+            1531, 1560, 1562, 1569,
+            1525
+        }
+    except ValueError:
         return False
 
 def is_kt8(reg):
@@ -350,7 +360,7 @@ async def dpmbt3(ctx):
                 subtype = "Tatra T3R.PV"
             elif num in [1564, 1576, 1583, 1587, 1589, 1620, 1628, 1629]:
                 subtype = "Tatra T3P"
-            elif num == 1661 <= num <= 1667:
+            elif num in [1661, 1662, 1663, 1664, 1665, 1666]:
                 subtype = "Tatra T3R"
             elif num == 1615:
                 subtype = "Tatra T3R *nosztalgia*"
@@ -913,6 +923,3 @@ async def on_ready():
     logger_loop.start()
 
 bot.run(TOKEN)
-
-
-
