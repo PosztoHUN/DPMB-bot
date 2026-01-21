@@ -481,44 +481,47 @@ async def dpmbt6(ctx):
         return await ctx.send("🚫 Nincs aktív T6A5 villamos.")
 
     # EMBED DARABOLÁS
-    MAX_FIELDS = 20
-    embeds = []
-    embed = discord.Embed(title="🚋 Aktív T6A5 villamosok", color=0xff0000)
-    field_count = 0
+MAX_FIELDS = 20
+embeds = []
+embed = discord.Embed(title="🚋 Aktív T6A5 villamosok", color=0xff0000)
+field_count = 0
 
-    for reg, i in sorted(active.items(), key=lambda x: int(x[0])):
-        if field_count >= MAX_FIELDS:
-            embeds.append(embed)
-            embed = discord.Embed(
-                title="🚋 Aktív T6A5 villamosok (folytatás)",
-                color=0xff0000
-            )
-            field_count = 0
-
-        value_text = (
-            f"Vonal: {i['line']}\n"
-            f"Forgalmi: {i['trip']}\n"
-            f"Cél: {i['dest']}"
+for reg, i in sorted(active.items(), key=lambda x: int(x[0])):
+    if field_count >= MAX_FIELDS:
+        embeds.append(embed)
+        embed = discord.Embed(
+            title="🚋 Aktív T6A5 villamosok (folytatás)",
+            color=0xff0000
         )
+        field_count = 0
 
-        # 1221–1248 közötti kocsiknál extra sor
-        try:
-            reg_num = int(reg)
-            if 1221 <= reg_num <= 1248:
-                value_text += "\n*🛠️ Tervezett kivonás: 2026. tavasz*"
-        except ValueError:
-            pass
+    value_text = (
+        f"Vonal: {i['line']}\n"
+        f"Forgalmi: {i['trip']}\n"
+        f"Cél: {i['dest']}"
+    )
 
-        embed.add_field(
-            name=f"{reg}",
-            value=value_text,
-            inline=False
-        )
-        field_count += 1
+    # 1221–1248 közötti kocsiknál extra sor
+    try:
+        reg_num = int(reg)
+        if 1221 <= reg_num <= 1248:
+            value_text += "\n*🛠️ Tervezett kivonás: 2026. tavasz*"
+    except ValueError:
+        pass
 
+    embed.add_field(
+        name=f"{reg}",
+        value=value_text,
+        inline=False
+    )
+    field_count += 1
+
+# Csak akkor add hozzá az utolsó embedet, ha nem üres
+if embed.fields:
     embeds.append(embed)
-    for e in embeds:
-        await ctx.send(embed=e)
+
+for e in embeds:
+    await ctx.send(embed=e)
 
 
 @bot.command()
