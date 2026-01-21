@@ -657,7 +657,7 @@ async def dpmbk2(ctx):
                 subtype = "Tatra K2R-RT"
             elif num == 1080:
                 subtype = "Tatra K2P"
-            elif num = 1123:
+            elif num == 1123:
                 subtype = "Tatra K2YU *nosztalgia*"
 
             active[vehicle_label] = {
@@ -913,5 +913,6 @@ async def on_ready():
     logger_loop.start()
 
 bot.run(TOKEN)
+
 
 
