@@ -463,7 +463,7 @@ async def dpmbt6(ctx):
             lat = v.get("Lat")
             lon = v.get("Lng")
 
-            # Csak T3-asok
+            # Csak T6-osok
             if not is_t6(vehicle_label):
                 continue
             if lat is None or lon is None:
@@ -472,7 +472,7 @@ async def dpmbt6(ctx):
             active[vehicle_label] = {
                 "line": line,
                 "dest": dest,
-                "trip": trip_id,    # hozzáadva a forgalmi
+                "trip": trip_id,
                 "lat": lat,
                 "lon": lon
             }
@@ -489,12 +489,29 @@ async def dpmbt6(ctx):
     for reg, i in sorted(active.items(), key=lambda x: int(x[0])):
         if field_count >= MAX_FIELDS:
             embeds.append(embed)
-            embed = discord.Embed(title="🚋 Aktív T6A5 villamosok (folytatás)", color=0xff0000)
+            embed = discord.Embed(
+                title="🚋 Aktív T6A5 villamosok (folytatás)",
+                color=0xff0000
+            )
             field_count = 0
+
+        value_text = (
+            f"Vonal: {i['line']}\n"
+            f"Forgalmi: {i['trip']}\n"
+            f"Cél: {i['dest']}"
+        )
+
+        # 1221–1248 közötti kocsiknál extra sor
+        try:
+            reg_num = int(reg)
+            if 1221 <= reg_num <= 1248:
+                value_text += "\n*🛠️ Tervezett kivonás: 2026. tavasz*"
+        except ValueError:
+            pass
 
         embed.add_field(
             name=f"{reg}",
-            value=f"Vonal: {i['line']}\nForgalmi: {i['trip']}\nCél: {i['dest']}",
+            value=value_text,
             inline=False
         )
         field_count += 1
@@ -502,6 +519,7 @@ async def dpmbt6(ctx):
     embeds.append(embed)
     for e in embeds:
         await ctx.send(embed=e)
+
 
 @bot.command()
 async def dpmbk3today(ctx, date: str = None):
