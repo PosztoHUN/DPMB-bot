@@ -681,8 +681,10 @@ async def dpmbk2(ctx):
                 continue
             if lat is None or lon is None:
                 continue 
-            #Altípus meghatározása
+            # Altípus meghatározása
             num = int(vehicle_label) if vehicle_label.isdigit() else 0
+            subtype = "Ismeretlen"  # alapértelmezett
+
             if num == 1018:
                 subtype = "Tatra K2R-RT"
             elif num == 1080:
