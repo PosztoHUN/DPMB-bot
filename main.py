@@ -39,7 +39,7 @@ def is_t2(reg):
     """1200-1299 T6 villamosok"""
     try:
         n = int(reg)
-        return 1425 <= n <= 1426
+        return 1435 <= n <= 1436
     except:
         return False
 
@@ -350,7 +350,7 @@ async def dpmbt3(ctx):
                 subtype = "Tatra T3R.PV"
             elif num in [1564, 1576, 1583, 1587, 1589, 1620, 1628, 1629]:
                 subtype = "Tatra T3P"
-            elif num == 1661 <= num <= 1666:
+            elif num == 1661 <= num <= 1667:
                 subtype = "Tatra T3R"
             elif num == 1615:
                 subtype = "Tatra T3R *nosztalgia*"
@@ -657,7 +657,7 @@ async def dpmbk2(ctx):
                 subtype = "Tatra K2R-RT"
             elif num == 1080:
                 subtype = "Tatra K2P"
-            else:
+            elif num = 1123:
                 subtype = "Tatra K2YU *nosztalgia*"
 
             active[vehicle_label] = {
@@ -913,4 +913,5 @@ async def on_ready():
     logger_loop.start()
 
 bot.run(TOKEN)
+
 
