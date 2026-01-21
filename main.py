@@ -356,7 +356,7 @@ async def dpmbt3(ctx):
                 subtype = "Tatra T3R *nosztalgia*"
             elif num in [1531, 1560, 1562, 1569]:
                 subtype = "Tatra T3R.EV"
-            elif num in 1525:
+            elif num == 1525:
                 subtype = "Tatra T3 *nosztalgia*"
             else:
                 subtype = "T3 (ismeretlen)"
@@ -913,3 +913,4 @@ async def on_ready():
     logger_loop.start()
 
 bot.run(TOKEN)
+
