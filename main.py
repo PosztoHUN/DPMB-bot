@@ -673,36 +673,26 @@ async def dpmbk2(ctx):
     vehicles = data.get("Vehicles", [])
 
     for v in vehicles:
-        vehicle_label = str(v.get("ID", ""))
-        if not is_k2(vehicle_label):
-            continue
+        line = v.get("LineName")
+        if line != "K2":
+            continue   # 🔴 EZ HIÁNYZOTT
 
+        vehicle_label = str(v.get("ID", ""))
         lat = v.get("Lat")
         lon = v.get("Lng")
+
         if lat is None or lon is None:
             continue
 
         trip_id = str(v.get("Course", "Ismeretlen"))
-        line = v.get("LineName", "Ismeretlen")
         dest = v.get("FinalStopName", "Ismeretlen")
-
-        num = int(vehicle_label)
-        if num == 1018:
-            subtype = "Tatra K2R-RT"
-        elif num == 1080:
-            subtype = "Tatra K2P"
-        elif num == 1123:
-            subtype = "Tatra K2YU *nosztalgia*"
-        else:
-            subtype = "Ismeretlen"
 
         active[vehicle_label] = {
             "line": line,
             "dest": dest,
             "trip": trip_id,
             "lat": lat,
-            "lon": lon,
-            "subtype": subtype
+            "lon": lon
         }
 
     if not active:
@@ -725,7 +715,6 @@ async def dpmbk2(ctx):
         embed.add_field(
             name=reg,
             value=(
-                f"Altípus: {i['subtype']}\n"
                 f"Vonal: {i['line']}\n"
                 f"Forgalmi: {i['trip']}\n"
                 f"Cél: {i['dest']}"
@@ -737,6 +726,7 @@ async def dpmbk2(ctx):
     embeds.append(embed)
     for e in embeds:
         await ctx.send(embed=e)
+
 
 
 @bot.command()
