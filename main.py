@@ -657,54 +657,57 @@ async def dpmbk2today(ctx, date: str = None):
 @bot.command()
 async def dpmbk2(ctx):
     active = {}
+
     async with aiohttp.ClientSession() as session:
         try:
             async with session.get(API_URL, timeout=10) as r:
                 if r.status != 200:
-                    return await ctx.send(f"❌ Hiba az API lekéréskor: {r.status}")
-                text = await r.text(encoding="utf-8-sig")  # BOM kezelése
+                    return await ctx.send(f"❌ API hiba: {r.status}")
+
+                text = await r.text(encoding="utf-8-sig")
                 data = json.loads(text)
+
         except Exception as e:
-            return await ctx.send(f"❌ Hiba az API lekéréskor: {e}")
+            return await ctx.send(f"❌ API hiba: {e}")
 
-        vehicles = data.get("Vehicles", [])
-        for v in vehicles:
-            vehicle_label = str(v.get("ID", ""))
-            trip_id = str(v.get("Course", "Unknown"))     # Forgalmi
-            line = v.get("LineName", "Ismeretlen")
-            dest = v.get("FinalStopName", "Ismeretlen")
-            lat = v.get("Lat")
-            lon = v.get("Lng")
+    vehicles = data.get("Vehicles", [])
 
-            # Csak T3-asok
-            if not is_k2(vehicle_label):
-                continue
-            if lat is None or lon is None:
-                continue 
-            # Altípus meghatározása
-            num = int(vehicle_label) if vehicle_label.isdigit() else 0
-            subtype = "Ismeretlen"  # alapértelmezett
+    for v in vehicles:
+        vehicle_label = str(v.get("ID", ""))
+        if not is_k2(vehicle_label):
+            continue
 
-            if num == 1018:
-                subtype = "Tatra K2R-RT"
-            elif num == 1080:
-                subtype = "Tatra K2P"
-            elif num == 1123:
-                subtype = "Tatra K2YU *nosztalgia*"
+        lat = v.get("Lat")
+        lon = v.get("Lng")
+        if lat is None or lon is None:
+            continue
 
-            active[vehicle_label] = {
-                "line": line,
-                "dest": dest,
-                "trip": trip_id,    # hozzáadva a forgalmi
-                "lat": lat,
-                "lon": lon,
-                "subtype": subtype
-            }
+        trip_id = str(v.get("Course", "Ismeretlen"))
+        line = v.get("LineName", "Ismeretlen")
+        dest = v.get("FinalStopName", "Ismeretlen")
+
+        num = int(vehicle_label)
+        if num == 1018:
+            subtype = "Tatra K2R-RT"
+        elif num == 1080:
+            subtype = "Tatra K2P"
+        elif num == 1123:
+            subtype = "Tatra K2YU *nosztalgia*"
+        else:
+            subtype = "Ismeretlen"
+
+        active[vehicle_label] = {
+            "line": line,
+            "dest": dest,
+            "trip": trip_id,
+            "lat": lat,
+            "lon": lon,
+            "subtype": subtype
+        }
 
     if not active:
         return await ctx.send("🚫 Nincs aktív K2 villamos.")
 
-    # EMBED DARABOLÁS
     MAX_FIELDS = 20
     embeds = []
     embed = discord.Embed(title="🚋 Aktív K2 villamosok", color=0xff0000)
@@ -713,12 +716,20 @@ async def dpmbk2(ctx):
     for reg, i in sorted(active.items(), key=lambda x: int(x[0])):
         if field_count >= MAX_FIELDS:
             embeds.append(embed)
-            embed = discord.Embed(title="🚋 Aktív K2 villamosok (folytatás)", color=0xff0000)
+            embed = discord.Embed(
+                title="🚋 Aktív K2 villamosok (folytatás)",
+                color=0xff0000
+            )
             field_count = 0
 
         embed.add_field(
-            name=f"{reg}",
-            value=f"Altípus: {i['subtype']}\nVonal: {i['line']}\nForgalmi: {i['trip']}\nCél: {i['dest']}",
+            name=reg,
+            value=(
+                f"Altípus: {i['subtype']}\n"
+                f"Vonal: {i['line']}\n"
+                f"Forgalmi: {i['trip']}\n"
+                f"Cél: {i['dest']}"
+            ),
             inline=False
         )
         field_count += 1
@@ -945,3 +956,4 @@ async def on_ready():
     logger_loop.start()
 
 bot.run(TOKEN)
+
