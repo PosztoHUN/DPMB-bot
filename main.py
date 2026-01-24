@@ -23,6 +23,11 @@ if os.path.exists(LOCK_FILE):
 # =======================
 # SEGÉDFÜGGVÉNYEK
 # =======================
+
+# jármű+forgalmi → utolsó log idő
+last_seen = {}
+LOG_INTERVAL = 300  # másodperc (5 perc)
+
 def ensure_dirs():
     os.makedirs("logs", exist_ok=True)
     os.makedirs("logs/veh", exist_ok=True)
@@ -87,13 +92,17 @@ def is_kt8(reg):
 
 def save_trip(trip_id, line, vehicle, dest):
     ensure_dirs()
-    today = datetime.now().strftime("%Y-%m-%d")
-    ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+    now = datetime.now()
+    today = now.strftime("%Y-%m-%d")
+    ts = now.strftime("%Y-%m-%d %H:%M:%S")
 
     trip_dir = f"logs/{today}"
     os.makedirs(trip_dir, exist_ok=True)
 
-    # Mentés járatonként
+    # =========================
+    # JÁRAT NAPLÓ (ELSŐ ÉSZLELÉS)
+    # =========================
     trip_file = f"{trip_dir}/{trip_id}.txt"
     if not os.path.exists(trip_file):
         with open(trip_file, "w", encoding="utf-8") as f:
@@ -106,18 +115,40 @@ def save_trip(trip_id, line, vehicle, dest):
                 f"Első észlelés: {ts}\n"
             )
 
-    # Mentés jármű szerint
+    # =========================
+    # JÁRMŰ NAPLÓ (FRISSÍTÉS)
+    # =========================
     veh_file = f"logs/veh/{vehicle}.txt"
-    last_id = None
+    os.makedirs("logs/veh", exist_ok=True)
+
+    key = f"{vehicle}_{trip_id}"
+
+    write_log = False
+
+    # ha még sosem láttuk → írunk
+    if key not in last_seen:
+        write_log = True
+
+    # ha már láttuk, de eltelt 5 perc → írunk
+    else:
+        delta = (now - last_seen[key]).total_seconds()
+        if delta >= LOG_INTERVAL:
+            write_log = True
+
+    # ha forgalmi váltás volt → azonnal írunk
     if os.path.exists(veh_file):
         with open(veh_file, "r", encoding="utf-8") as f:
             lines = f.read().splitlines()
             if lines and "ID " in lines[-1]:
-                last_id = lines[-1].split("ID ")[1].split(" ")[0]
+                last_trip = lines[-1].split("ID ")[1].split(" ")[0]
+                if last_trip != trip_id:
+                    write_log = True
 
-    if last_id != trip_id:
+    if write_log:
         with open(veh_file, "a", encoding="utf-8") as f:
             f.write(f"{ts} - ID {trip_id} - Vonal {line} - {dest}\n")
+        last_seen[key] = now
+
 
 # =======================
 # DISCORD INIT
