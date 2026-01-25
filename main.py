@@ -193,134 +193,134 @@ async def logger_loop():
 # PARANCSOK
 # =======================
                 
-# @bot.command()
-# async def dpmbtatra(ctx, date: str = None):
-#     day = date or datetime.now().strftime("%Y-%m-%d")
-#     veh_dir = "logs/veh"
-#     tatras = {}
+@bot.command()
+async def dpmbtatra(ctx, date: str = None):
+    day = date or datetime.now().strftime("%Y-%m-%d")
+    veh_dir = "logs/veh"
+    tatras = {}
 
-#     for fname in os.listdir(veh_dir):
-#         if not fname.endswith(".txt"):
-#             continue
+    for fname in os.listdir(veh_dir):
+        if not fname.endswith(".txt"):
+            continue
 
-#         reg = fname.replace(".txt", "")
+        reg = fname.replace(".txt", "")
 
-#         # Pályaszám kötelező
-#         if not reg.isdigit():
-#             continue
+        # Pályaszám kötelező
+        if not reg.isdigit():
+            continue
 
-#         # 🔒 KÖZPONTI SZŰRŐ – CSAK EZEK JÖHETNEK ÁT
-#         is_tatra = (
-#             is_t2(reg)
-#             or is_t3(reg)
-#             or is_t6(reg)
-#             or is_k2(reg)
-#             or is_k3(reg)
-#             or is_kt8(reg)
-#         )
+        num = int(reg)  # ✅ FONTOS: int konverzió ITT
 
-#         if not is_tatra:
-#             continue  # ⛔ minden más kuka
+        # 🔒 KÖZPONTI SZŰRŐ – CSAK TATRA
+        is_tatra = (
+            is_t2(num)
+            or is_t3(num)
+            or is_t6(num)
+            or is_k2(num)
+            or is_k3(num)
+            or is_kt8(num)
+        )
 
-#         num = int(reg)
+        if not is_tatra:
+            continue  # ⛔ minden más kuka
 
-#         # Altípus
-#         subtype = "Tatra (ismeretlen)"
+        # Altípus
+        subtype = "Tatra (ismeretlen)"
 
-#         if is_t3(reg):
-#             if num in [1604, 1606, 1607, 1608, 1611, 1613, 1614, 1619, 1631, 1634, 1639, 1640, 1651, 1652]:
-#                 subtype = "Tatra T3G"
-#             elif num in [1517, 1558, 1561, 1603] or 1653 <= num <= 1658:
-#                 subtype = "Tatra T3R.PV"
-#             elif num in [1564, 1576, 1583, 1587, 1589, 1620, 1628, 1629]:
-#                 subtype = "Tatra T3P"
-#             elif 1661 <= num <= 1666:
-#                 subtype = "Tatra T3R"
-#             elif num == 1615:
-#                 subtype = "Tatra T3R *nosztalgia*"
-#             elif num == 1525:
-#                 subtype = "Tatra T3 *nosztalgia*"
-#             elif num in [1531, 1560, 1562, 1569]:
-#                 subtype = "Tatra T3R.EV"
+        if is_t3(num):
+            if num in [1604, 1606, 1607, 1608, 1611, 1613, 1614, 1619, 1631, 1634, 1639, 1640, 1651, 1652]:
+                subtype = "Tatra T3G"
+            elif num in [1517, 1558, 1561, 1603] or 1653 <= num <= 1658:
+                subtype = "Tatra T3R.PV"
+            elif num in [1564, 1576, 1583, 1587, 1589, 1620, 1628, 1629]:
+                subtype = "Tatra T3P"
+            elif 1661 <= num <= 1666:
+                subtype = "Tatra T3R"
+            elif num == 1615:
+                subtype = "Tatra T3R *nosztalgia*"
+            elif num == 1525:
+                subtype = "Tatra T3 *nosztalgia*"
+            elif num in [1531, 1560, 1562, 1569]:
+                subtype = "Tatra T3R.EV"
 
-#         elif is_t6(reg):
-#             subtype = "Tatra T6A5"
+        elif is_t6(num):
+            subtype = "Tatra T6A5"
 
-#         elif is_k3(reg):
-#             subtype = "Tatra K3R-N"
+        elif is_k3(num):
+            subtype = "Tatra K3R-N"
 
-#         elif is_kt8(reg):
-#             if 1729 <= num <= 1735:
-#                 subtype = "Tatra KT8D5N"
-#             else:
-#                 subtype = "Tatra KT8D5R.N2"
+        elif is_kt8(num):
+            if 1729 <= num <= 1735:
+                subtype = "Tatra KT8D5N"
+            else:
+                subtype = "Tatra KT8D5R.N2"
 
-#         elif is_t2(reg):
-#             subtype = "Tatra T2 *nosztalgia*"
+        elif is_t2(num):
+            subtype = "Tatra T2 *nosztalgia*"
 
-#         elif is_k2(reg):
-#             if num == 1018:
-#                 subtype = "Tatra K2R-RT"
-#             elif num == 1080:
-#                 subtype = "Tatra K2P"
-#             elif num == 1123:
-#                 subtype = "Tatra K2YU *nosztalgia*"
+        elif is_k2(num):
+            if num == 1018:
+                subtype = "Tatra K2R-RT"
+            elif num == 1080:
+                subtype = "Tatra K2P"
+            elif num == 1123:
+                subtype = "Tatra K2YU *nosztalgia*"
 
-#         # 📖 LOG OLVASÁS – CSAK A MEGFELELŐ JÁRMŰVEKHEZ
-#         with open(os.path.join(veh_dir, fname), "r", encoding="utf-8") as f:
-#             for line in f:
-#                 if not line.startswith(day):
-#                     continue
+        # 📖 LOG OLVASÁS – CSAK A MEGFELELŐ JÁRMŰVEKHEZ
+        with open(os.path.join(veh_dir, fname), "r", encoding="utf-8") as f:
+            for line in f:
+                if not line.startswith(day):
+                    continue
 
-#                 trip_id = line.split("ID ")[1].split(" ")[0]
-#                 line_no = line.split("Vonal ")[1].split(" ")[0]
-#                 dest = line.split(" - ")[-1].strip()
+                trip_id = line.split("ID ")[1].split(" ")[0]
+                line_no = line.split("Vonal ")[1].split(" ")[0]
+                dest = line.split(" - ")[-1].strip()
 
-#                 tatras.setdefault(reg, []).append(
-#                     (subtype, line_no, trip_id, dest)
-#                 )
+                tatras.setdefault(reg, []).append(
+                    (subtype, line_no, trip_id, dest)
+                )
 
-#     if not tatras:
-#         return await ctx.send(f"🚫 {day} napon nem volt forgalomban Tatra villamos.")
+    if not tatras:
+        return await ctx.send(f"🚫 {day} napon nem volt forgalomban Tatra villamos.")
 
-#     # EMBED
-#     MAX_FIELDS = 20
-#     embeds = []
+    # EMBED
+    MAX_FIELDS = 20
+    embeds = []
 
-#     embed = discord.Embed(
-#         title=f"🚋 Tatra villamosok ({day})",
-#         color=0xff0000
-#     )
-#     field_count = 0
+    embed = discord.Embed(
+        title=f"🚋 Tatra villamosok ({day})",
+        color=0xff0000
+    )
+    field_count = 0
 
-#     for reg, records in sorted(tatras.items(), key=lambda x: int(x[0])):
-#         if field_count >= MAX_FIELDS:
-#             embeds.append(embed)
-#             embed = discord.Embed(
-#                 title=f"🚋 Tatra villamosok ({day}) – folytatás",
-#                 color=0xff0000
-#             )
-#             field_count = 0
+    for reg, records in sorted(tatras.items(), key=lambda x: int(x[0])):
+        if field_count >= MAX_FIELDS:
+            embeds.append(embed)
+            embed = discord.Embed(
+                title=f"🚋 Tatra villamosok ({day}) – folytatás",
+                color=0xff0000
+            )
+            field_count = 0
 
-#         subtype, line_no, trip_id, dest = records[0]
+        subtype, line_no, trip_id, dest = records[0]
 
-#         embed.add_field(
-#             name=reg,
-#             value=(
-#                 f"Altípus: {subtype}\n"
-#                 f"Vonal: {line_no}\n"
-#                 f"Forgalmi: {trip_id}\n"
-#                 f"Cél: {dest}"
-#             ),
-#             inline=False
-#         )
+        embed.add_field(
+            name=reg,
+            value=(
+                f"Altípus: {subtype}\n"
+                f"Vonal: {line_no}\n"
+                f"Forgalmi: {trip_id}\n"
+                f"Cél: {dest}"
+            ),
+            inline=False
+        )
 
-#         field_count += 1
+        field_count += 1
 
-#     embeds.append(embed)
+    embeds.append(embed)
 
-#     for e in embeds:
-#         await ctx.send(embed=e)
+    for e in embeds:
+        await ctx.send(embed=e)
                 
 @bot.command()
 async def dpmbt3today(ctx, date: str = None):
@@ -977,4 +977,5 @@ async def on_ready():
     logger_loop.start()
 
 bot.run(TOKEN)
+
 
