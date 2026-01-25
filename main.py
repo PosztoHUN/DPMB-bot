@@ -90,12 +90,12 @@ def is_kt8(reg):
     except:
         return False
 
-def is_26tr(reg):   
-    try:
-        n = int(reg)
-        return 3301 <= n <= 3310
-    except:
-        return False
+# def is_26tr(reg):   
+#     try:
+#         n = int(reg)
+#         return 3301 <= n <= 3310
+#     except:
+#         return False
 
 def save_trip(trip_id, line, vehicle, dest):
     ensure_dirs()
@@ -969,112 +969,112 @@ async def dpmbkt8(ctx):
     for e in embeds:
         await ctx.send(embed=e)
 
-@bot.command()
-async def dpmb26trtoday(ctx, date: str = None):
-    day = date or datetime.now().strftime("%Y-%m-%d")
-    veh_dir = "logs/veh"
-    t3s = {}
+# @bot.command()
+# async def dpmb26trtoday(ctx, date: str = None):
+#     day = date or datetime.now().strftime("%Y-%m-%d")
+#     veh_dir = "logs/veh"
+#     t3s = {}
 
-    for fname in os.listdir(veh_dir):
-        if not fname.endswith(".txt"):
-            continue
-        reg = fname.replace(".txt","")
-        if not is_9tr(reg):
-            continue
+#     for fname in os.listdir(veh_dir):
+#         if not fname.endswith(".txt"):
+#             continue
+#         reg = fname.replace(".txt","")
+#         if not is_9tr(reg):
+#             continue
 
-        with open(os.path.join(veh_dir, fname), "r", encoding="utf-8") as f:
-            for line in f:
-                if line.startswith(day):
-                    ts = line.split(" - ")[0]
-                    trip_id = line.split("ID ")[1].split(" ")[0]
-                    line_no = line.split("Vonal ")[1].split(" ")[0]
-                    t3s.setdefault(reg, []).append((ts, line_no, trip_id))
+#         with open(os.path.join(veh_dir, fname), "r", encoding="utf-8") as f:
+#             for line in f:
+#                 if line.startswith(day):
+#                     ts = line.split(" - ")[0]
+#                     trip_id = line.split("ID ")[1].split(" ")[0]
+#                     line_no = line.split("Vonal ")[1].split(" ")[0]
+#                     t3s.setdefault(reg, []).append((ts, line_no, trip_id))
 
-    if not t3s:
-        return await ctx.send(f"🚫 {day} napon nem közlekedett Skoda 26Tr trolibusz.")
+#     if not t3s:
+#         return await ctx.send(f"🚫 {day} napon nem közlekedett Skoda 26Tr trolibusz.")
 
-    out = [f"🚋 Skoda 26Tr – forgalomban ({day})"]
-    for reg in sorted(t3s):
-        first = min(t3s[reg], key=lambda x: x[0])
-        last = max(t3s[reg], key=lambda x: x[0])
-        out.append(f"{reg} — {first[0][11:16]} → {last[0][11:16]} (vonal {first[1]})")
+#     out = [f"🚋 Skoda 26Tr – forgalomban ({day})"]
+#     for reg in sorted(t3s):
+#         first = min(t3s[reg], key=lambda x: x[0])
+#         last = max(t3s[reg], key=lambda x: x[0])
+#         out.append(f"{reg} — {first[0][11:16]} → {last[0][11:16]} (vonal {first[1]})")
 
-    msg = "\n".join(out)
-    for i in range(0, len(msg), 1900):
-        await ctx.send(msg[i:i+1900])
+#     msg = "\n".join(out)
+#     for i in range(0, len(msg), 1900):
+#         await ctx.send(msg[i:i+1900])
 
-@bot.command()
-async def dpmb26tr(ctx):
-    active = {}
-    async with aiohttp.ClientSession() as session:
-        try:
-            async with session.get(API_URL, timeout=10) as r:
-                if r.status != 200:
-                    return await ctx.send(f"❌ Hiba az API lekéréskor: {r.status}")
-                text = await r.text(encoding="utf-8-sig")
-                data = json.loads(text)
-        except Exception as e:
-            return await ctx.send(f"❌ Hiba az API lekéréskor: {e}")
+# @bot.command()
+# async def dpmb26tr(ctx):
+#     active = {}
+#     async with aiohttp.ClientSession() as session:
+#         try:
+#             async with session.get(API_URL, timeout=10) as r:
+#                 if r.status != 200:
+#                     return await ctx.send(f"❌ Hiba az API lekéréskor: {r.status}")
+#                 text = await r.text(encoding="utf-8-sig")
+#                 data = json.loads(text)
+#         except Exception as e:
+#             return await ctx.send(f"❌ Hiba az API lekéréskor: {e}")
 
-        vehicles = data.get("Vehicles", [])
-        for v in vehicles:
-            vehicle_label = str(v.get("ID", ""))
-            trip_id = str(v.get("Course", "Unknown"))
-            line = v.get("LineName", "Ismeretlen")
-            dest = v.get("FinalStopName", "Ismeretlen")
-            lat = v.get("Lat")
-            lon = v.get("Lng")
+#         vehicles = data.get("Vehicles", [])
+#         for v in vehicles:
+#             vehicle_label = str(v.get("ID", ""))
+#             trip_id = str(v.get("Course", "Unknown"))
+#             line = v.get("LineName", "Ismeretlen")
+#             dest = v.get("FinalStopName", "Ismeretlen")
+#             lat = v.get("Lat")
+#             lon = v.get("Lng")
 
-            if not is_26tr(vehicle_label):
-                continue
-            if lat is None or lon is None:
-                continue
+#             if not is_26tr(vehicle_label):
+#                 continue
+#             if lat is None or lon is None:
+#                 continue
 
-            active[vehicle_label] = {
-                "line": line,
-                "dest": dest,
-                "trip": trip_id,
-                "lat": lat,
-                "lon": lon
-            }
+#             active[vehicle_label] = {
+#                 "line": line,
+#                 "dest": dest,
+#                 "trip": trip_id,
+#                 "lat": lat,
+#                 "lon": lon
+#             }
 
-    if not active:
-        return await ctx.send("🚫 Nincs aktív Skoda 26Tr trolibusz.")
+#     if not active:
+#         return await ctx.send("🚫 Nincs aktív Skoda 26Tr trolibusz.")
 
-    MAX_FIELDS = 20
-    embeds = []
-    embed = discord.Embed(title="🚋 Aktív Skoda 26Tr trolibuszok", color=0xff0000)
-    field_count = 0
+#     MAX_FIELDS = 20
+#     embeds = []
+#     embed = discord.Embed(title="🚋 Aktív Skoda 26Tr trolibuszok", color=0xff0000)
+#     field_count = 0
 
-    for reg, i in sorted(active.items(), key=lambda x: int(x[0])):
-        if field_count >= MAX_FIELDS:
-            embeds.append(embed)
-            embed = discord.Embed(
-                title="🚋 Aktív Skoda 26Tr trolibuszok (folytatás)",
-                color=0xff0000
-            )
-            field_count = 0
+#     for reg, i in sorted(active.items(), key=lambda x: int(x[0])):
+#         if field_count >= MAX_FIELDS:
+#             embeds.append(embed)
+#             embed = discord.Embed(
+#                 title="🚋 Aktív Skoda 26Tr trolibuszok (folytatás)",
+#                 color=0xff0000
+#             )
+#             field_count = 0
 
-        value_text = (
-            f"Vonal: {i['line']}\n"
-            f"Forgalmi: {i['trip']}\n"
-            f"Cél: {i['dest']}"
-        )
+#         value_text = (
+#             f"Vonal: {i['line']}\n"
+#             f"Forgalmi: {i['trip']}\n"
+#             f"Cél: {i['dest']}"
+#         )
 
-        embed.add_field(
-            name=f"{reg}",
-            value=value_text,
-            inline=False
-        )
-        field_count += 1
+#         embed.add_field(
+#             name=f"{reg}",
+#             value=value_text,
+#             inline=False
+#         )
+#         field_count += 1
 
-    # Csak akkor adjuk hozzá az utolsó embedet, ha nem üres
-    if embed.fields:
-        embeds.append(embed)
+#     # Csak akkor adjuk hozzá az utolsó embedet, ha nem üres
+#     if embed.fields:
+#         embeds.append(embed)
 
-    # KÜLDÉS ASZINKRON FÜGGVÉNYEN BELÜL
-    for e in embeds:
-        await ctx.send(embed=e)
+#     # KÜLDÉS ASZINKRON FÜGGVÉNYEN BELÜL
+#     for e in embeds:
+#         await ctx.send(embed=e)
 
 # =======================
 # START
@@ -1089,6 +1089,7 @@ async def on_ready():
     logger_loop.start()
 
 bot.run(TOKEN)
+
 
 
 
