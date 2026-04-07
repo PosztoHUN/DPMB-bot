@@ -370,6 +370,9 @@ async def dpmbtatra(ctx, date: str = None):
                 subtype = "Tatra K2P"
             elif num == 1123:
                 subtype = "Tatra K2YU *nosztalgia*"
+                
+        else:
+            continue  # ⛔ ha nem tudjuk besorolni, kuka
 
         # 📖 LOG OLVASÁS – CSAK A MEGFELELŐ JÁRMŰVEKHEZ
         with open(os.path.join(veh_dir, fname), "r", encoding="utf-8") as f:
@@ -1094,9 +1097,9 @@ async def dpmbvario(ctx):
 
             # Altípus meghatározása
             num = int(vehicle_label) if vehicle_label.isdigit() else 0
-            if num in is_lf2:
+            if is_lf2(vehicle_label):
                 subtype = "Vario LF2R.E"
-            elif num in is_lfr:
+            elif is_lfr(vehicle_label):
                 subtype = "Vario LFR.E"
             else:
                 subtype = "Ismeretlen"
