@@ -372,7 +372,7 @@ async def dpmbtatra(ctx, date: str = None):
                 subtype = "Tatra K2YU *nosztalgia*"
                 
         else:
-            continue  # ⛔ ha nem tudjuk besorolni, kuka
+            continue 
 
         # 📖 LOG OLVASÁS – CSAK A MEGFELELŐ JÁRMŰVEKHEZ
         with open(os.path.join(veh_dir, fname), "r", encoding="utf-8") as f:
