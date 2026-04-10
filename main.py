@@ -60,7 +60,7 @@ def is_k3(reg):
     """1200-1299 T6 villamosok"""
     try:
         n = int(reg)
-        return 1750 <= n <= 1753
+        return 1751 <= n <= 1754
     except:
         return False
 
@@ -309,30 +309,16 @@ async def dpmbtatra(ctx, date: str = None):
             continue
 
         reg = fname.replace(".txt", "")
-
-        # Pályaszám kötelező
         if not reg.isdigit():
             continue
 
-        # 🔒 KÖZPONTI SZŰRŐ – CSAK EZEK JÖHETNEK ÁT
-        is_tatra = (
-            is_t2(reg)
-            or is_t3(reg)
-            or is_t6(reg)
-            or is_k2(reg)
-            or is_k3(reg)
-            or is_kt8(reg)
-        )
-
-        if not is_tatra:
-            continue  # ⛔ minden más kuka
-
         num = int(reg)
 
-        # Altípus
-        subtype = "Tatra (ismeretlen)"
-
-        if is_t3(reg):
+        # 🔒 CSAK TATRA
+        subtype = None
+        if is_t2(reg):
+            subtype = "Tatra T2 *nosztalgia*"
+        elif is_t3(reg):
             if num in [1604, 1606, 1607, 1608, 1611, 1613, 1614, 1619, 1631, 1634, 1639, 1640, 1651, 1652]:
                 subtype = "Tatra T3G"
             elif num in [1517, 1558, 1561, 1603] or 1653 <= num <= 1658:
@@ -347,22 +333,10 @@ async def dpmbtatra(ctx, date: str = None):
                 subtype = "Tatra T3 *nosztalgia*"
             elif num in [1531, 1560, 1562, 1569]:
                 subtype = "Tatra T3R.EV"
-
+            else:
+                subtype = "Tatra T3 (ismeretlen)"
         elif is_t6(reg):
             subtype = "Tatra T6A5"
-
-        elif is_k3(reg):
-            subtype = "Tatra K3R-N"
-
-        elif is_kt8(reg):
-            if 1729 <= num <= 1735:
-                subtype = "Tatra KT8D5N"
-            else:
-                subtype = "Tatra KT8D5R.N2"
-
-        elif is_t2(reg):
-            subtype = "Tatra T2 *nosztalgia*"
-
         elif is_k2(reg):
             if num == 1018:
                 subtype = "Tatra K2R-RT"
@@ -370,11 +344,21 @@ async def dpmbtatra(ctx, date: str = None):
                 subtype = "Tatra K2P"
             elif num == 1123:
                 subtype = "Tatra K2YU *nosztalgia*"
-                
-        else:
-            continue 
+            else:
+                subtype = None  # nem Tatra
+        elif is_k3(reg):
+            subtype = "Tatra K3R-N"
+        elif is_kt8(reg):
+            if 1729 <= num <= 1735:
+                subtype = "Tatra KT8D5N"
+            else:
+                subtype = "Tatra KT8D5R.N2"
 
-        # 📖 LOG OLVASÁS – CSAK A MEGFELELŐ JÁRMŰVEKHEZ
+        # Ha nem Tatra, ugorjuk át
+        if subtype is None:
+            continue
+
+        # 📖 LOG OLVASÁS
         with open(os.path.join(veh_dir, fname), "r", encoding="utf-8") as f:
             for line in f:
                 if not line.startswith(day):
@@ -391,7 +375,7 @@ async def dpmbtatra(ctx, date: str = None):
     if not tatras:
         return await ctx.send(f"🚫 {day} napon nem volt forgalomban Tatra villamos.")
 
-    # EMBED
+    # EMBED KÜLDÉS
     MAX_FIELDS = 20
     embeds = []
 
