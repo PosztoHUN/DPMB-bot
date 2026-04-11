@@ -1343,7 +1343,7 @@ async def dpmb13t(ctx):
         await ctx.send(embed=e)
         
 @bot.command()
-async def dpmbanitra(ctx):
+async def dpmb45t(ctx):
     active = {}
     async with aiohttp.ClientSession() as session:
         try:
