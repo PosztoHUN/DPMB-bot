@@ -1074,7 +1074,7 @@ async def dpmbvario(ctx):
             lat = v.get("Lat")
             lon = v.get("Lng")
 
-            if not is_t3(vehicle_label):
+            if not is_lf2(vehicle_label) or not is_lfr(vehicle_label):
                 continue
             if lat is None or lon is None:
                 continue
@@ -1120,6 +1120,298 @@ async def dpmbvario(ctx):
         field_count += 1
 
     embeds.append(embed)
+    for e in embeds:
+        await ctx.send(embed=e)
+        
+@bot.command()
+async def dpmbanitra(ctx):
+    active = {}
+    async with aiohttp.ClientSession() as session:
+        try:
+            async with session.get(API_URL, timeout=10) as r:
+                if r.status != 200:
+                    return await ctx.send(f"❌ Hiba az API lekéréskor: {r.status}")
+                text = await r.text(encoding="utf-8-sig")
+                data = json.loads(text)
+        except Exception as e:
+            return await ctx.send(f"❌ Hiba az API lekéréskor: {e}")
+
+        vehicles = data.get("Vehicles", [])
+        for v in vehicles:
+            vehicle_label = str(v.get("ID", ""))
+            trip_id = str(v.get("Course", "Unknown"))
+            line = v.get("LineName", "Ismeretlen")
+            dest = v.get("FinalStopName", "Ismeretlen")
+            lat = v.get("Lat")
+            lon = v.get("Lng")
+
+            if not is_antira(vehicle_label):
+                continue
+            if lat is None or lon is None:
+                continue
+
+            active[vehicle_label] = {
+                "line": line,
+                "dest": dest,
+                "trip": trip_id,
+                "lat": lat,
+                "lon": lon
+            }
+
+    if not active:
+        return await ctx.send("🚫 Nincs aktív Anitra villamos.")
+
+    MAX_FIELDS = 20
+    embeds = []
+    embed = discord.Embed(title="🚋 Aktív Anitra villamosok", color=0xff0000)
+    field_count = 0
+
+    for reg, i in sorted(active.items(), key=lambda x: int(x[0])):
+        if field_count >= MAX_FIELDS:
+            embeds.append(embed)
+            embed = discord.Embed(
+                title="🚋 Aktív Anitra villamosok (folytatás)",
+                color=0xff0000
+            )
+            field_count = 0
+
+        value_text = (
+            f"Vonal: {i['line']}\n"
+            f"Forgalmi: {i['trip']}\n"
+            f"Cél: {i['dest']}"
+        )
+
+        embed.add_field(
+            name=f"{reg}",
+            value=value_text,
+            inline=False
+        )
+        field_count += 1
+
+    # Csak akkor adjuk hozzá az utolsó embedet, ha nem üres
+    if embed.fields:
+        embeds.append(embed)
+
+    # KÜLDÉS ASZINKRON FÜGGVÉNYEN BELÜL
+    for e in embeds:
+        await ctx.send(embed=e)
+        
+@bot.command()
+async def dpmbevo(ctx):
+    active = {}
+    async with aiohttp.ClientSession() as session:
+        try:
+            async with session.get(API_URL, timeout=10) as r:
+                if r.status != 200:
+                    return await ctx.send(f"❌ Hiba az API lekéréskor: {r.status}")
+                text = await r.text(encoding="utf-8-sig")
+                data = json.loads(text)
+        except Exception as e:
+            return await ctx.send(f"❌ Hiba az API lekéréskor: {e}")
+
+        vehicles = data.get("Vehicles", [])
+        for v in vehicles:
+            vehicle_label = str(v.get("ID", ""))
+            trip_id = str(v.get("Course", "Unknown"))
+            line = v.get("LineName", "Ismeretlen")
+            dest = v.get("FinalStopName", "Ismeretlen")
+            lat = v.get("Lat")
+            lon = v.get("Lng")
+
+            if not is_evo(vehicle_label):
+                continue
+            if lat is None or lon is None:
+                continue
+
+            active[vehicle_label] = {
+                "line": line,
+                "dest": dest,
+                "trip": trip_id,
+                "lat": lat,
+                "lon": lon
+            }
+
+    if not active:
+        return await ctx.send("🚫 Nincs aktív EVO 2 villamos.")
+
+    MAX_FIELDS = 20
+    embeds = []
+    embed = discord.Embed(title="🚋 Aktív EVO 2 villamosok", color=0xff0000)
+    field_count = 0
+
+    for reg, i in sorted(active.items(), key=lambda x: int(x[0])):
+        if field_count >= MAX_FIELDS:
+            embeds.append(embed)
+            embed = discord.Embed(
+                title="🚋 Aktív EVO 2 villamosok (folytatás)",
+                color=0xff0000
+            )
+            field_count = 0
+
+        value_text = (
+            f"Vonal: {i['line']}\n"
+            f"Forgalmi: {i['trip']}\n"
+            f"Cél: {i['dest']}"
+        )
+
+        embed.add_field(
+            name=f"{reg}",
+            value=value_text,
+            inline=False
+        )
+        field_count += 1
+
+    # Csak akkor adjuk hozzá az utolsó embedet, ha nem üres
+    if embed.fields:
+        embeds.append(embed)
+
+    # KÜLDÉS ASZINKRON FÜGGVÉNYEN BELÜL
+    for e in embeds:
+        await ctx.send(embed=e)
+        
+@bot.command()
+async def dpmb13t(ctx):
+    active = {}
+    async with aiohttp.ClientSession() as session:
+        try:
+            async with session.get(API_URL, timeout=10) as r:
+                if r.status != 200:
+                    return await ctx.send(f"❌ Hiba az API lekéréskor: {r.status}")
+                text = await r.text(encoding="utf-8-sig")
+                data = json.loads(text)
+        except Exception as e:
+            return await ctx.send(f"❌ Hiba az API lekéréskor: {e}")
+
+        vehicles = data.get("Vehicles", [])
+        for v in vehicles:
+            vehicle_label = str(v.get("ID", ""))
+            trip_id = str(v.get("Course", "Unknown"))
+            line = v.get("LineName", "Ismeretlen")
+            dest = v.get("FinalStopName", "Ismeretlen")
+            lat = v.get("Lat")
+            lon = v.get("Lng")
+
+            if not is_13t(vehicle_label):
+                continue
+            if lat is None or lon is None:
+                continue
+
+            active[vehicle_label] = {
+                "line": line,
+                "dest": dest,
+                "trip": trip_id,
+                "lat": lat,
+                "lon": lon
+            }
+
+    if not active:
+        return await ctx.send("🚫 Nincs aktív Skoda 13T villamos.")
+
+    MAX_FIELDS = 20
+    embeds = []
+    embed = discord.Embed(title="🚋 Aktív Skoda 13T villamosok", color=0xff0000)
+    field_count = 0
+
+    for reg, i in sorted(active.items(), key=lambda x: int(x[0])):
+        if field_count >= MAX_FIELDS:
+            embeds.append(embed)
+            embed = discord.Embed(
+                title="🚋 Aktív Skoda 13T villamosok (folytatás)",
+                color=0xff0000
+            )
+            field_count = 0
+
+        value_text = (
+            f"Vonal: {i['line']}\n"
+            f"Forgalmi: {i['trip']}\n"
+            f"Cél: {i['dest']}"
+        )
+
+        embed.add_field(
+            name=f"{reg}",
+            value=value_text,
+            inline=False
+        )
+        field_count += 1
+
+    # Csak akkor adjuk hozzá az utolsó embedet, ha nem üres
+    if embed.fields:
+        embeds.append(embed)
+
+    # KÜLDÉS ASZINKRON FÜGGVÉNYEN BELÜL
+    for e in embeds:
+        await ctx.send(embed=e)
+        
+@bot.command()
+async def dpmbanitra(ctx):
+    active = {}
+    async with aiohttp.ClientSession() as session:
+        try:
+            async with session.get(API_URL, timeout=10) as r:
+                if r.status != 200:
+                    return await ctx.send(f"❌ Hiba az API lekéréskor: {r.status}")
+                text = await r.text(encoding="utf-8-sig")
+                data = json.loads(text)
+        except Exception as e:
+            return await ctx.send(f"❌ Hiba az API lekéréskor: {e}")
+
+        vehicles = data.get("Vehicles", [])
+        for v in vehicles:
+            vehicle_label = str(v.get("ID", ""))
+            trip_id = str(v.get("Course", "Unknown"))
+            line = v.get("LineName", "Ismeretlen")
+            dest = v.get("FinalStopName", "Ismeretlen")
+            lat = v.get("Lat")
+            lon = v.get("Lng")
+
+            if not is_45t(vehicle_label):
+                continue
+            if lat is None or lon is None:
+                continue
+
+            active[vehicle_label] = {
+                "line": line,
+                "dest": dest,
+                "trip": trip_id,
+                "lat": lat,
+                "lon": lon
+            }
+
+    if not active:
+        return await ctx.send("🚫 Nincs aktív Anitra villamos.")
+
+    MAX_FIELDS = 20
+    embeds = []
+    embed = discord.Embed(title="🚋 Aktív Anitra villamosok", color=0xff0000)
+    field_count = 0
+
+    for reg, i in sorted(active.items(), key=lambda x: int(x[0])):
+        if field_count >= MAX_FIELDS:
+            embeds.append(embed)
+            embed = discord.Embed(
+                title="🚋 Aktív Anitra villamosok (folytatás)",
+                color=0xff0000
+            )
+            field_count = 0
+
+        value_text = (
+            f"Vonal: {i['line']}\n"
+            f"Forgalmi: {i['trip']}\n"
+            f"Cél: {i['dest']}"
+        )
+
+        embed.add_field(
+            name=f"{reg}",
+            value=value_text,
+            inline=False
+        )
+        field_count += 1
+
+    # Csak akkor adjuk hozzá az utolsó embedet, ha nem üres
+    if embed.fields:
+        embeds.append(embed)
+
+    # KÜLDÉS ASZINKRON FÜGGVÉNYEN BELÜL
     for e in embeds:
         await ctx.send(embed=e)
         
