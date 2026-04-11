@@ -1074,7 +1074,7 @@ async def dpmbvario(ctx):
             lat = v.get("Lat")
             lon = v.get("Lng")
 
-            if not is_lf2(vehicle_label) or not is_lfr(vehicle_label):
+            if not is_lf2(vehicle_label) and not is_lfr(vehicle_label):
                 continue
             if lat is None or lon is None:
                 continue
