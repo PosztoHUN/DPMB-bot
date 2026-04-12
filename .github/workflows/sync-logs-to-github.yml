@@ -1,0 +1,36 @@
+name: Sync Logs to GitHub
+on:
+  schedule:
+    - cron: '0 * * * *'  # Every hour
+  workflow_dispatch:     # Allow manual trigger
+
+jobs:
+  sync-logs:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Configure Git
+        run: |
+          git config --local user.email "bot@railway.app"
+          git config --local user.name "Trip Logger Bot"
+
+      - name: Sync and commit logs
+        run: |
+          if [ -d "logs" ]; then
+            git add logs/
+            if ! git diff-index --quiet HEAD --; then
+              git commit -m "chore: Auto-sync logs $(date -u +'%Y-%m-%d %H:%M:%S UTC')"
+              git push
+            else
+              echo "No log changes to commit"
+            fi
+          fi
+
+      - name: Handle errors
+        if: failure()
+        run: echo "Log sync failed but job continues..."
+
