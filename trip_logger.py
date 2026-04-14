@@ -52,7 +52,7 @@ def ensure_directories():
     """Ensure log directories exist"""
     os.makedirs(LOG_DIR, exist_ok=True)
     os.makedirs(f"{LOG_DIR}/veh", exist_ok=True)
-    logger.info(f"Directories ensured: {LOG_DIR}")
+    logger.debug(f"Directories ensured: {LOG_DIR}")
 
 def get_log_file_path(course_id):
     """Get the log file path for a course ID, organized by date"""
@@ -198,7 +198,7 @@ async def process_vehicles(current_vehicles):
         
         if vehicle_id not in active_vehicles:
             # New vehicle spotted - LOG START
-            logger.info(f"Trip START: Vehicle {vehicle_id} on course {course_id} to {destination}")
+            logger.debug(f"Trip START: Vehicle {vehicle_id} on course {course_id} to {destination}")
             log_trip_event(vehicle_id, course_id, "START", line_name, now, destination)
             
             active_vehicles[vehicle_id] = {
@@ -221,10 +221,10 @@ async def process_vehicles(current_vehicles):
             old_line_name = active_vehicles[vehicle_id]["line_name"]
             old_destination = active_vehicles[vehicle_id].get("destination", "Unknown")
             
-            logger.info(f"Trip END: Vehicle {vehicle_id} on course {old_course}")
+            logger.debug(f"Trip END: Vehicle {vehicle_id} on course {old_course}")
             log_trip_event(vehicle_id, old_course, "END", old_line_name, now, old_destination)
             
-            logger.info(f"Trip START: Vehicle {vehicle_id} on course {course_id} to {destination}")
+            logger.debug(f"Trip START: Vehicle {vehicle_id} on course {course_id} to {destination}")
             log_trip_event(vehicle_id, course_id, "START", line_name, now, destination)
             
             active_vehicles[vehicle_id] = {
@@ -255,7 +255,7 @@ async def process_vehicles(current_vehicles):
                 line_name = vehicle_data["line_name"]
                 destination = vehicle_data.get("destination", "Unknown")
                 
-                logger.info(f"Trip END: Vehicle {vehicle_id} on course {course_id} (inactive)")
+                logger.debug(f"Trip END: Vehicle {vehicle_id} on course {course_id} (inactive)")
                 log_trip_event(vehicle_id, course_id, "END", line_name, now, destination)
                 
                 vehicles_to_remove.append(vehicle_id)
@@ -268,10 +268,10 @@ async def process_vehicles(current_vehicles):
 async def main_loop():
     """Main application loop"""
     ensure_directories()
-    logger.info("Trip Logger started")
-    logger.info(f"API URL: {API_URL}")
-    logger.info(f"Fetch interval: {FETCH_INTERVAL} seconds")
-    logger.info(f"Activity threshold: {ACTIVITY_THRESHOLD} seconds")
+    logger.warning("Trip Logger started")
+    logger.debug(f"API URL: {API_URL}")
+    logger.debug(f"Fetch interval: {FETCH_INTERVAL} seconds")
+    logger.debug(f"Activity threshold: {ACTIVITY_THRESHOLD} seconds")
     
     error_count = 0
     max_errors = 10
@@ -286,7 +286,7 @@ async def main_loop():
                 
                 # Parse vehicle data
                 current_vehicles = parse_vehicle_data(api_data)
-                logger.info(f"Fetched data for {len(current_vehicles)} vehicles")
+                logger.debug(f"Fetched data for {len(current_vehicles)} vehicles")
                 
                 # Process vehicles and track trips
                 await process_vehicles(current_vehicles)
@@ -305,7 +305,7 @@ async def main_loop():
             await asyncio.sleep(FETCH_INTERVAL)
         
         except KeyboardInterrupt:
-            logger.info("Trip Logger stopped by user")
+            logger.warning("Trip Logger stopped by user")
             break
         except Exception as e:
             logger.error(f"Unexpected error in main loop: {e}")
@@ -319,5 +319,5 @@ if __name__ == "__main__":
     try:
         asyncio.run(main_loop())
     except KeyboardInterrupt:
-        logger.info("Application terminated")
+        logger.warning("Application terminated")
         sys.exit(0)
