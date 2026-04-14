@@ -387,6 +387,24 @@ async def logger_loop():
 async def git_sync_logs():
     """Periodically commit and push logs to GitHub"""
     try:
+        github_token = os.getenv("GITHUB_TOKEN", "")
+        
+        if not github_token:
+            print("⚠ GITHUB_TOKEN not set - skipping sync")
+            return
+        
+        # Configure git with token for Railway's container
+        subprocess.run(
+            ["git", "config", "--global", "user.email", "railway-bot@railway.app"],
+            capture_output=True,
+            timeout=5
+        )
+        subprocess.run(
+            ["git", "config", "--global", "user.name", "Railway Bot"],
+            capture_output=True,
+            timeout=5
+        )
+        
         # Stage logs
         result = subprocess.run(
             ["git", "add", "logs/"],
@@ -405,6 +423,31 @@ async def git_sync_logs():
         
         # Only push if there were changes committed
         if commit_result.returncode == 0:
+            # For HTTPS, use token-based auth
+            origin_url = subprocess.run(
+                ["git", "config", "--get", "remote.origin.url"],
+                capture_output=True,
+                text=True,
+                timeout=5
+            ).stdout.strip()
+            
+            # Convert to HTTPS URL with token if it's SSH
+            if origin_url.startswith("git@"):
+                # Convert SSH to HTTPS
+                origin_url = origin_url.replace("git@github.com:", "https://github.com/").replace(".git", "")
+                if not origin_url.endswith(".git"):
+                    origin_url += ".git"
+            
+            # Add token to URL for auth
+            if "https://" in origin_url:
+                origin_url = origin_url.replace("https://", f"https://x-access-token:{github_token}@")
+            
+            subprocess.run(
+                ["git", "remote", "set-url", "origin", origin_url],
+                capture_output=True,
+                timeout=5
+            )
+            
             push_result = subprocess.run(
                 ["git", "push"],
                 capture_output=True,
@@ -421,7 +464,7 @@ async def git_sync_logs():
     except subprocess.TimeoutExpired:
         print("Git sync timeout")
     except FileNotFoundError:
-        print("Git not found - skipping sync")
+        print("⚠ Git not found - install git on Railway container")
     except Exception as e:
         print(f"Git sync error: {e}")
 
