@@ -6,7 +6,8 @@ import sys
 import tempfile
 import json
 import atexit
-import subprocess
+import requests
+import base64
 from datetime import datetime
 
 # =======================
@@ -381,92 +382,90 @@ async def logger_loop():
             save_trip(trip_id, line, vehicle_label, dest)
 
 # =======================
-# GIT SYNC - AUTO PUSH TO GITHUB
+# GIT SYNC - AUTO PUSH TO GITHUB VIA API
 # =======================
 @tasks.loop(hours=1)
 async def git_sync_logs():
-    """Periodically commit and push logs to GitHub"""
+    """Upload logs to GitHub using GitHub API (no git needed)"""
     try:
         github_token = os.getenv("GITHUB_TOKEN", "")
+        github_repo = os.getenv("GITHUB_REPO", "PostelUN/DPMB-bot")  # owner/repo
         
         if not github_token:
             print("⚠ GITHUB_TOKEN not set - skipping sync")
             return
         
-        # Configure git with token for Railway's container
-        subprocess.run(
-            ["git", "config", "--global", "user.email", "railway-bot@railway.app"],
-            capture_output=True,
-            timeout=5
-        )
-        subprocess.run(
-            ["git", "config", "--global", "user.name", "Railway Bot"],
-            capture_output=True,
-            timeout=5
-        )
+        if not os.path.isdir("logs"):
+            return  # No logs yet
         
-        # Stage logs
-        result = subprocess.run(
-            ["git", "add", "logs/"],
-            capture_output=True,
-            text=True,
-            timeout=10
-        )
+        # Find all log files
+        log_files = []
+        for root, dirs, files in os.walk("logs"):
+            for file in files:
+                if file.endswith(".txt"):
+                    file_path = os.path.join(root, file)
+                    log_files.append(file_path)
         
-        # Commit logs
-        commit_result = subprocess.run(
-            ["git", "commit", "-m", f"Auto: Update logs {datetime.now().isoformat()}"],
-            capture_output=True,
-            text=True,
-            timeout=10
-        )
+        if not log_files:
+            return  # No files to sync
         
-        # Only push if there were changes committed
-        if commit_result.returncode == 0:
-            # For HTTPS, use token-based auth
-            origin_url = subprocess.run(
-                ["git", "config", "--get", "remote.origin.url"],
-                capture_output=True,
-                text=True,
-                timeout=5
-            ).stdout.strip()
+        headers = {
+            "Authorization": f"token {github_token}",
+            "Accept": "application/vnd.github.v3+json"
+        }
+        
+        synced_count = 0
+        for file_path in log_files:
+            try:
+                # Read file content
+                with open(file_path, 'r', encoding='utf-8') as f:
+                    content = f.read()
+                
+                # Encode to base64
+                content_bytes = content.encode('utf-8')
+                content_b64 = base64.b64encode(content_bytes).decode('utf-8')
+                
+                # GitHub API path
+                gh_path = file_path.replace("\\", "/")  # Windows path → Unix path
+                
+                # Get current file SHA (if it exists)
+                get_url = f"https://api.github.com/repos/{github_repo}/contents/{gh_path}"
+                get_response = requests.get(get_url, headers=headers, timeout=10)
+                
+                sha = None
+                if get_response.status_code == 200:
+                    sha = get_response.json().get("sha")
+                
+                # Upload/update file
+                update_data = {
+                    "message": f"Auto: Update logs {datetime.now().isoformat()}",
+                    "content": content_b64,
+                    "branch": "main"
+                }
+                
+                if sha:
+                    update_data["sha"] = sha
+                
+                response = requests.put(
+                    get_url,
+                    headers=headers,
+                    json=update_data,
+                    timeout=10
+                )
+                
+                if response.status_code in [200, 201]:
+                    synced_count += 1
+                else:
+                    print(f"✗ Failed to sync {file_path}: {response.status_code} - {response.text}")
             
-            # Convert to HTTPS URL with token if it's SSH
-            if origin_url.startswith("git@"):
-                # Convert SSH to HTTPS
-                origin_url = origin_url.replace("git@github.com:", "https://github.com/").replace(".git", "")
-                if not origin_url.endswith(".git"):
-                    origin_url += ".git"
-            
-            # Add token to URL for auth
-            if "https://" in origin_url:
-                origin_url = origin_url.replace("https://", f"https://x-access-token:{github_token}@")
-            
-            subprocess.run(
-                ["git", "remote", "set-url", "origin", origin_url],
-                capture_output=True,
-                timeout=5
-            )
-            
-            push_result = subprocess.run(
-                ["git", "push"],
-                capture_output=True,
-                text=True,
-                timeout=30
-            )
-            if push_result.returncode == 0:
-                print(f"✓ Logs synced to GitHub at {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-            else:
-                print(f"✗ Git push failed: {push_result.stderr}")
-        else:
-            # No changes to commit
-            pass
-    except subprocess.TimeoutExpired:
-        print("Git sync timeout")
-    except FileNotFoundError:
-        print("⚠ Git not found - install git on Railway container")
+            except Exception as e:
+                print(f"✗ Error syncing {file_path}: {e}")
+        
+        if synced_count > 0:
+            print(f"✓ Synced {synced_count} log files to GitHub at {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+    
     except Exception as e:
-        print(f"Git sync error: {e}")
+        print(f"✗ GitHub sync error: {e}")
 
 # =======================
 # PARANCSOK
