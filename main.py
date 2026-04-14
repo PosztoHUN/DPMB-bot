@@ -1290,6 +1290,19 @@ async def dpmbkt8(ctx):
     for e in embeds:
         await ctx.send(embed=e)
         
+def get_vario_type(reg):
+    if not reg:
+        return None
+    reg = str(reg)
+
+    if is_lf2(reg):
+        return "Vario LF2R.E"
+    elif is_lfr(reg):
+        return "Vario LFR.E"
+    else:
+        return "Ismeretlen"
+
+
 @bot.command()
 async def dpmbvario(ctx):
     active = {}
@@ -1306,7 +1319,10 @@ async def dpmbvario(ctx):
         vehicles = data.get("Vehicles", [])
         for v in vehicles:
             vehicle_label = str(v.get("ID", ""))
-            trip_id = str(v.get("Course", "Unknown"))  # Forgalmi
+            idb = v.get("IDB")
+            idc = v.get("IDC")
+
+            trip_id = str(v.get("Course", "Unknown"))
             line = v.get("LineName", "Ismeretlen")
             dest = v.get("FinalStopName", "Ismeretlen")
             lat = v.get("Lat")
@@ -1317,16 +1333,34 @@ async def dpmbvario(ctx):
             if lat is None or lon is None:
                 continue
 
-            # Altípus meghatározása
-            num = int(vehicle_label) if vehicle_label.isdigit() else 0
-            if is_lf2(vehicle_label):
-                subtype = "Vario LF2R.E"
-            elif is_lfr(vehicle_label):
-                subtype = "Vario LFR.E"
-            else:
-                subtype = "Ismeretlen"
+            # Szerelvény összeállítása
+            consist = vehicle_label
+            if idb:
+                consist += f"+{idb}"
+                if idc:
+                    consist += f"+{idc}"
+
+            # Típusok meghatározása
+            types = []
+
+            main_type = get_vario_type(vehicle_label)
+            if main_type:
+                types.append(main_type)
+
+            if idb:
+                t = get_vario_type(idb)
+                if t:
+                    types.append(t)
+
+            if idc:
+                t = get_vario_type(idc)
+                if t:
+                    types.append(t)
+
+            subtype = " + ".join(types)
 
             active[vehicle_label] = {
+                "consist": consist if idb else vehicle_label,
                 "line": line,
                 "dest": dest,
                 "trip": trip_id,
@@ -1338,7 +1372,6 @@ async def dpmbvario(ctx):
     if not active:
         return await ctx.send("🚫 Nincs aktív Vario villamos.")
 
-    # EMBED DARABOLÁS
     MAX_FIELDS = 20
     embeds = []
     embed = discord.Embed(title="🚋 Aktív Vario villamosok", color=0xff0000)
@@ -1347,17 +1380,27 @@ async def dpmbvario(ctx):
     for reg, i in sorted(active.items(), key=lambda x: int(x[0])):
         if field_count >= MAX_FIELDS:
             embeds.append(embed)
-            embed = discord.Embed(title="🚋 Aktív Vario villamosok (folytatás)", color=0xff0000)
+            embed = discord.Embed(
+                title="🚋 Aktív Vario villamosok (folytatás)",
+                color=0xff0000
+            )
             field_count = 0
 
         embed.add_field(
-            name=f"{reg}",
-            value=f"Altípus: {i['subtype']}\nVonal: {i['line']}\nForgalmi: {i['trip']}\nCél: {i['dest']}",
+            name=f"{i['consist']}",
+            value=(
+                f"Altípus: {i['subtype']}\n"
+                f"Vonal: {i['line']}\n"
+                f"Forgalmi: {i['trip']}\n"
+                f"Cél: {i['dest']}"
+            ),
             inline=False
         )
         field_count += 1
 
-    embeds.append(embed)
+    if embed.fields:
+        embeds.append(embed)
+
     for e in embeds:
         await ctx.send(embed=e)
         
