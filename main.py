@@ -401,14 +401,19 @@ async def git_sync_logs():
     """Upload logs to GitHub using GitHub API (no git needed)"""
     try:
         github_token = os.getenv("GITHUB_TOKEN", "")
-        github_repo = os.getenv("GITHUB_REPO", "PostelUN/DPMB-bot")  # owner/repo
+        github_repo = os.getenv("GITHUB_REPO", "")  # Must be set as owner/repo
         
         print(f"[GIT_SYNC] Starting sync...")
         print(f"[GIT_SYNC] Token set: {bool(github_token)}")
-        print(f"[GIT_SYNC] Repo: {github_repo}")
+        print(f"[GIT_SYNC] Repo var: {github_repo if github_repo else 'NOT SET'}")
         
         if not github_token:
             print("[GIT_SYNC] ⚠ GITHUB_TOKEN not set - skipping sync")
+            return
+        
+        if not github_repo:
+            print("[GIT_SYNC] ⚠ GITHUB_REPO not set - skipping sync")
+            print("[GIT_SYNC] Set GITHUB_REPO=PostelUN/DPMB-bot (or your username/repo)")
             return
         
         if not os.path.isdir("logs"):
@@ -429,10 +434,19 @@ async def git_sync_logs():
             print("[GIT_SYNC] No .txt files to sync")
             return  # No files to sync
         
+        # Verify token is valid first
         headers = {
             "Authorization": f"token {github_token}",
             "Accept": "application/vnd.github.v3+json"
         }
+        
+        user_response = requests.get("https://api.github.com/user", headers=headers, timeout=10)
+        if user_response.status_code != 200:
+            print(f"[GIT_SYNC] ✗ Invalid GitHub token: {user_response.status_code}")
+            return
+        
+        user_login = user_response.json().get("login")
+        print(f"[GIT_SYNC] Authenticated as: {user_login}")
         
         synced_count = 0
         failed_count = 0
@@ -443,6 +457,10 @@ async def git_sync_logs():
                 with open(file_path, 'r', encoding='utf-8') as f:
                     content = f.read()
                 
+                # Skip placeholder files
+                if "placeholder" in file_path.lower():
+                    continue
+                
                 # Encode to base64
                 content_bytes = content.encode('utf-8')
                 content_b64 = base64.b64encode(content_bytes).decode('utf-8')
@@ -450,13 +468,19 @@ async def git_sync_logs():
                 # GitHub API path
                 gh_path = file_path.replace("\\", "/")  # Windows path → Unix path
                 
-                # Get current file SHA (if it exists)
+                # Construct GitHub API URL
                 get_url = f"https://api.github.com/repos/{github_repo}/contents/{gh_path}"
+                
+                print(f"[GIT_SYNC] Uploading to: {get_url}")
+                
+                # Get current file SHA (if it exists)
                 get_response = requests.get(get_url, headers=headers, timeout=10)
                 
                 sha = None
                 if get_response.status_code == 200:
                     sha = get_response.json().get("sha")
+                elif get_response.status_code != 404:
+                    print(f"[GIT_SYNC] ⚠ Check failed: {get_response.status_code}")
                 
                 # Upload/update file
                 update_data = {
@@ -477,9 +501,11 @@ async def git_sync_logs():
                 
                 if response.status_code in [200, 201]:
                     synced_count += 1
+                    print(f"[GIT_SYNC] ✓ Synced: {gh_path}")
                 else:
                     failed_count += 1
-                    print(f"[GIT_SYNC] ✗ Failed to sync {file_path}: {response.status_code} - {response.text[:100]}")
+                    error_msg = response.json().get("message", "Unknown error")
+                    print(f"[GIT_SYNC] ✗ Failed {gh_path}: {response.status_code} - {error_msg}")
             
             except Exception as e:
                 failed_count += 1
@@ -660,6 +686,13 @@ async def dpmbt3(ctx):
         vehicles = data.get("Vehicles", [])
         for v in vehicles:
             vehicle_label = str(v.get("ID", ""))
+            idb = v.get("IDB")
+            idc = v.get("IDC")
+            consist = vehicle_label
+            if idb:
+                consist += f"+{idb}"
+                if idc:
+                    consist += f"+{idc}"
             trip_id = str(v.get("Course", "Unknown"))  # Forgalmi
             line = v.get("LineName", "Ismeretlen")
             dest = v.get("FinalStopName", "Ismeretlen")
@@ -691,6 +724,7 @@ async def dpmbt3(ctx):
                 subtype = "T3 (ismeretlen)"
 
             active[vehicle_label] = {
+                "consist": consist if idb else vehicle_label,
                 "line": line,
                 "dest": dest,
                 "trip": trip_id,
@@ -715,7 +749,7 @@ async def dpmbt3(ctx):
             field_count = 0
 
         embed.add_field(
-            name=f"{reg}",
+            name=f"{i['consist']}",
             value=f"Altípus: {i['subtype']}\nVonal: {i['line']}\nForgalmi: {i['trip']}\nCél: {i['dest']}",
             inline=False
         )
@@ -776,6 +810,13 @@ async def dpmbt6(ctx):
         vehicles = data.get("Vehicles", [])
         for v in vehicles:
             vehicle_label = str(v.get("ID", ""))
+            idb = v.get("IDB")
+            idc = v.get("IDC")
+            consist = vehicle_label
+            if idb:
+                consist += f"+{idb}"
+                if idc:
+                    consist += f"+{idc}"
             trip_id = str(v.get("Course", "Unknown"))
             line = v.get("LineName", "Ismeretlen")
             dest = v.get("FinalStopName", "Ismeretlen")
@@ -788,6 +829,7 @@ async def dpmbt6(ctx):
                 continue
 
             active[vehicle_label] = {
+                "consist": consist if idb else vehicle_label,
                 "line": line,
                 "dest": dest,
                 "trip": trip_id,
@@ -826,7 +868,7 @@ async def dpmbt6(ctx):
             pass
 
         embed.add_field(
-            name=f"{reg}",
+            name=f"{i['consist']}",
             value=value_text,
             inline=False
         )
