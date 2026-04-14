@@ -6,6 +6,7 @@ import sys
 import tempfile
 import json
 import atexit
+import subprocess
 from datetime import datetime
 
 # =======================
@@ -378,6 +379,51 @@ async def logger_loop():
                 continue
 
             save_trip(trip_id, line, vehicle_label, dest)
+
+# =======================
+# GIT SYNC - AUTO PUSH TO GITHUB
+# =======================
+@tasks.loop(hours=1)
+async def git_sync_logs():
+    """Periodically commit and push logs to GitHub"""
+    try:
+        # Stage logs
+        result = subprocess.run(
+            ["git", "add", "logs/"],
+            capture_output=True,
+            text=True,
+            timeout=10
+        )
+        
+        # Commit logs
+        commit_result = subprocess.run(
+            ["git", "commit", "-m", f"Auto: Update logs {datetime.now().isoformat()}"],
+            capture_output=True,
+            text=True,
+            timeout=10
+        )
+        
+        # Only push if there were changes committed
+        if commit_result.returncode == 0:
+            push_result = subprocess.run(
+                ["git", "push"],
+                capture_output=True,
+                text=True,
+                timeout=30
+            )
+            if push_result.returncode == 0:
+                print(f"✓ Logs synced to GitHub at {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+            else:
+                print(f"✗ Git push failed: {push_result.stderr}")
+        else:
+            # No changes to commit
+            pass
+    except subprocess.TimeoutExpired:
+        print("Git sync timeout")
+    except FileNotFoundError:
+        print("Git not found - skipping sync")
+    except Exception as e:
+        print(f"Git sync error: {e}")
 
 # =======================
 # PARANCSOK
@@ -1943,6 +1989,7 @@ async def on_ready():
     ensure_dirs()
     print(f"Bejelentkezve mint {bot.user}")
     logger_loop.start()
+    git_sync_logs.start()
 
 bot.run(TOKEN)
 
