@@ -52,26 +52,26 @@ def get_log_file_path(course_id):
     os.makedirs(date_dir, exist_ok=True)
     return os.path.join(date_dir, f"{course_id}.txt")
 
-def log_trip_event(vehicle_id, course_id, event_type, direction, timestamp, location=None):
+def log_trip_event(vehicle_id, course_id, event_type, line_name, timestamp, destination=None):
     """
     Log a trip event (start/end) to file
     
     Args:
         vehicle_id: Vehicle registration number
-        course_id: Route/course ID (e.g., "00707")
+        course_id: Route/course ID (e.g., "01203")
         event_type: "START" or "END"
-        direction: Direction identifier
+        line_name: Line/route name (e.g., "26")
         timestamp: Event timestamp
-        location: Optional location info
+        destination: Final destination name (e.g., "Arena Brno")
     """
     try:
         log_file = get_log_file_path(course_id)
         
-        # Format the log entry
+        # Format the log entry in Hungarian
         time_str = timestamp.strftime("%Y-%m-%d %H:%M:%S")
-        location_str = f" | Location: {location}" if location else ""
+        destination_str = f" | Cél: {destination}" if destination else ""
         
-        log_entry = f"{time_str} | {event_type:5} | Vehicle: {vehicle_id} | Direction: {direction}{location_str}\n"
+        log_entry = f"{time_str} | {event_type:5} | Jármű: {vehicle_id} | Vonal: {line_name}{destination_str}\n"
         
         # Append to log file
         with open(log_file, 'a', encoding='utf-8') as f:
@@ -87,38 +87,42 @@ def parse_vehicle_data(data):
     Parse vehicle data from API response
     
     Returns:
-        dict: {vehicle_id: {"course": course_id, "direction": direction, "location": {lat, lon, ...}}}
+        dict: {vehicle_id: {"course": course_id, "line_name": line_name, "location": {lat, lon, ...}, "destination": final_stop_name}}
     """
     vehicles = {}
     
     try:
-        if isinstance(data, dict):
-            # Handle different possible API response formats
-            items = data.get('vehicles', []) or data.get('data', []) or data.get('results', [])
-            
-            if not items and isinstance(data, dict):
-                # If no standard key, iterate all dict values
-                items = list(data.values())
+        # API returns: {"LastUpdate": "...", "Vehicles": [...]}
+        if isinstance(data, dict) and 'Vehicles' in data:
+            items = data.get('Vehicles', [])
+        elif isinstance(data, list):
+            items = data
         else:
-            items = data if isinstance(data, list) else []
+            logger.warning(f"Unexpected data format: {type(data)}")
+            return {}
         
         for item in items:
             if not isinstance(item, dict):
                 continue
             
-            # Extract relevant fields
-            vehicle_id = item.get('Registration') or item.get('registration') or item.get('id')
-            course_id = item.get('Course') or item.get('course') or item.get('route')
-            direction = item.get('Direction') or item.get('direction') or "Unknown"
+            # Extract relevant fields from IDSJMK API
+            vehicle_id = item.get('ID') or item.get('IDB')  # Primary or backup ID
+            course_id = item.get('Course')  # e.g., '01203'
+            line_name = item.get('LineName', 'Unknown')  # Line name (e.g., '26', '7')
+            final_stop_name = item.get('FinalStopName', 'Unknown')  # Destination
             
             if vehicle_id and course_id:
                 vehicles[str(vehicle_id)] = {
-                    "course": str(course_id).zfill(5),  # Pad course ID to 5 digits
-                    "direction": str(direction),
+                    "course": str(course_id),
+                    "line_name": str(line_name),
+                    "destination": str(final_stop_name),
                     "location": {
-                        "lat": item.get('Latitude') or item.get('latitude'),
-                        "lon": item.get('Longitude') or item.get('longitude')
-                    }
+                        "lat": item.get('Lat'),
+                        "lon": item.get('Lng')
+                    },
+                    "line_id": item.get('LineID'),
+                    "bearing": item.get('Bearing'),
+                    "delay": item.get('Delay', 0)
                 }
         
         return vehicles
@@ -126,6 +130,22 @@ def parse_vehicle_data(data):
     except Exception as e:
         logger.error(f"Error parsing vehicle data: {e}")
         return {}
+
+async def git_sync_logs():
+    """Periodically commit and push logs to GitHub"""
+    import subprocess
+    
+    try:
+        subprocess.run(["git", "add", "logs/"], check=True, cwd="/app")
+        result = subprocess.run(
+            ["git", "commit", "-m", f"Auto: Update logs {datetime.now().isoformat()}"],
+            check=False, cwd="/app"
+        )
+        if result.returncode == 0:
+            subprocess.run(["git", "push"], check=True, cwd="/app")
+            logger.info("Logs synced to GitHub")
+    except Exception as e:
+        logger.warning(f"Git sync failed: {e}")
 
 # =======================
 # MAIN FUNCTIONS
@@ -137,7 +157,13 @@ async def fetch_vehicle_data():
         async with aiohttp.ClientSession() as session:
             async with session.get(API_URL, timeout=aiohttp.ClientTimeout(total=10)) as response:
                 if response.status == 200:
-                    return await response.json()
+                    # Read raw text to handle UTF-8 BOM
+                    text = await response.text()
+                    # Strip BOM if present
+                    if text.startswith('\ufeff'):
+                        text = text[1:]
+                    # Parse JSON
+                    return json.loads(text)
                 else:
                     logger.warning(f"API returned status code {response.status}")
                     return None
@@ -158,46 +184,51 @@ async def process_vehicles(current_vehicles):
     # Check for new vehicles or course changes (trip starts)
     for vehicle_id, vehicle_info in current_vehicles.items():
         course_id = vehicle_info["course"]
-        direction = vehicle_info["direction"]
-        location = vehicle_info.get("location", {})
+        line_name = vehicle_info["line_name"]
+        destination = vehicle_info.get("destination", "Unknown")
         
         if vehicle_id not in active_vehicles:
             # New vehicle spotted - LOG START
-            logger.info(f"Trip START: Vehicle {vehicle_id} on course {course_id} direction {direction}")
-            log_trip_event(vehicle_id, course_id, "START", direction, now, location)
+            logger.info(f"Trip START: Vehicle {vehicle_id} on course {course_id} to {destination}")
+            log_trip_event(vehicle_id, course_id, "START", line_name, now, destination)
             
             active_vehicles[vehicle_id] = {
                 "course": course_id,
-                "direction": direction,
+                "line_name": line_name,
+                "destination": destination,
                 "last_seen": now_timestamp
             }
             trip_history[vehicle_id] = {
                 "start_time": now,
                 "course": course_id,
-                "direction": direction
+                "line_name": line_name,
+                "destination": destination
             }
         
         elif (active_vehicles[vehicle_id]["course"] != course_id or 
-              active_vehicles[vehicle_id]["direction"] != direction):
-            # Course or direction changed - LOG END of previous, START of new
+              active_vehicles[vehicle_id]["destination"] != destination):
+            # Course or destination changed - LOG END of previous, START of new
             old_course = active_vehicles[vehicle_id]["course"]
-            old_direction = active_vehicles[vehicle_id]["direction"]
+            old_line_name = active_vehicles[vehicle_id]["line_name"]
+            old_destination = active_vehicles[vehicle_id].get("destination", "Unknown")
             
             logger.info(f"Trip END: Vehicle {vehicle_id} on course {old_course}")
-            log_trip_event(vehicle_id, old_course, "END", old_direction, now, location)
+            log_trip_event(vehicle_id, old_course, "END", old_line_name, now, old_destination)
             
-            logger.info(f"Trip START: Vehicle {vehicle_id} on course {course_id} direction {direction}")
-            log_trip_event(vehicle_id, course_id, "START", direction, now, location)
+            logger.info(f"Trip START: Vehicle {vehicle_id} on course {course_id} to {destination}")
+            log_trip_event(vehicle_id, course_id, "START", line_name, now, destination)
             
             active_vehicles[vehicle_id] = {
                 "course": course_id,
-                "direction": direction,
+                "line_name": line_name,
+                "destination": destination,
                 "last_seen": now_timestamp
             }
             trip_history[vehicle_id] = {
                 "start_time": now,
                 "course": course_id,
-                "direction": direction
+                "line_name": line_name,
+                "destination": destination
             }
         else:
             # Same vehicle, same course - just update last seen
@@ -212,10 +243,11 @@ async def process_vehicles(current_vehicles):
             if time_inactive > ACTIVITY_THRESHOLD:
                 # Vehicle not seen for a while - LOG END
                 course_id = vehicle_data["course"]
-                direction = vehicle_data["direction"]
+                line_name = vehicle_data["line_name"]
+                destination = vehicle_data.get("destination", "Unknown")
                 
                 logger.info(f"Trip END: Vehicle {vehicle_id} on course {course_id} (inactive)")
-                log_trip_event(vehicle_id, course_id, "END", direction, now)
+                log_trip_event(vehicle_id, course_id, "END", line_name, now, destination)
                 
                 vehicles_to_remove.append(vehicle_id)
     
