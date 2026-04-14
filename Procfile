@@ -1,1 +1,1 @@
-web: python trip_logger.py
+web: python main.py

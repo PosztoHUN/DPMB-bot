@@ -28,6 +28,10 @@ if os.path.exists(LOCK_FILE):
 last_seen = {}
 LOG_INTERVAL = 300  # másodperc (5 perc)
 
+# Trip tracking for START/END detection
+active_vehicles = {}  # {vehicle_id: {"course": course_id, ...}}
+trip_history = {}   # {vehicle_id: {"start_time": timestamp, "course": course_id, ...}}
+
 def ensure_dirs():
     os.makedirs("logs", exist_ok=True)
     os.makedirs("logs/veh", exist_ok=True)
