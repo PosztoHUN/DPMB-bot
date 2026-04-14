@@ -259,6 +259,26 @@ def save_trip(trip_id, line, vehicle, dest):
         last_seen[key] = now
 
 
+def log_trip_event(vehicle_id, course_id, event_type, line_name, destination):
+    """Log a trip START/END event in Hungarian format"""
+    ensure_dirs()
+    now = datetime.now()
+    today = now.strftime("%Y-%m-%d")
+    ts = now.strftime("%Y-%m-%d %H:%M:%S")
+    
+    trip_dir = f"logs/{today}"
+    os.makedirs(trip_dir, exist_ok=True)
+    
+    # Log to course-specific file
+    trip_file = f"{trip_dir}/{course_id}.txt"
+    
+    destination_str = f" | Cél: {destination}" if destination else ""
+    log_entry = f"{ts} | {event_type:5} | Jármű: {vehicle_id} | Vonal: {line_name}{destination_str}\n"
+    
+    with open(trip_file, "a", encoding="utf-8") as f:
+        f.write(log_entry)
+
+
 # =======================
 # DISCORD INIT
 # =======================
@@ -284,18 +304,79 @@ async def logger_loop():
             return
 
         vehicles = data.get("Vehicles", [])
+        
+        # Build current vehicle dict for trip tracking
+        current_vehicles = {}
         for v in vehicles:
-            vehicle_label = str(v.get("ID", "Unknown"))          # Pályaszám/ID
-            trip_id = str(v.get("Course", "Unknown"))           # Forgalmi
-            line = v.get("LineName", "Ismeretlen")             # Vonal
-            dest = v.get("FinalStopName", "Ismeretlen")        # Célállomás
+            vehicle_id = str(v.get("ID", "Unknown"))
+            course_id = str(v.get("Course", "Unknown"))
+            line_name = v.get("LineName", "Unknown")
+            destination = v.get("FinalStopName", "Ismeretlen")
+            
+            current_vehicles[vehicle_id] = {
+                "course": course_id,
+                "line_name": line_name,
+                "destination": destination
+            }
+        
+        # TRIP START/END DETECTION
+        now = datetime.now()
+        
+        # Check for new vehicles or course changes
+        for vehicle_id, vehicle_info in current_vehicles.items():
+            course_id = vehicle_info["course"]
+            line_name = vehicle_info["line_name"]
+            destination = vehicle_info["destination"]
+            
+            if vehicle_id not in active_vehicles:
+                # NEW TRIP START
+                log_trip_event(vehicle_id, course_id, "START", line_name, destination)
+                active_vehicles[vehicle_id] = {
+                    "course": course_id,
+                    "line_name": line_name,
+                    "destination": destination
+                }
+            elif (active_vehicles[vehicle_id]["course"] != course_id or
+                  active_vehicles[vehicle_id]["destination"] != destination):
+                # TRIP END + NEW START
+                old_course = active_vehicles[vehicle_id]["course"]
+                old_line = active_vehicles[vehicle_id]["line_name"]
+                old_dest = active_vehicles[vehicle_id]["destination"]
+                
+                log_trip_event(vehicle_id, old_course, "END", old_line, old_dest)
+                log_trip_event(vehicle_id, course_id, "START", line_name, destination)
+                
+                active_vehicles[vehicle_id] = {
+                    "course": course_id,
+                    "line_name": line_name,
+                    "destination": destination
+                }
+        
+        # Check for inactive vehicles
+        vehicles_to_remove = []
+        for vehicle_id in list(active_vehicles.keys()):
+            if vehicle_id not in current_vehicles:
+                vehicles_to_remove.append(vehicle_id)
+        
+        # Remove inactive vehicles and log END
+        for vehicle_id in vehicles_to_remove:
+            vehicle_info = active_vehicles[vehicle_id]
+            log_trip_event(vehicle_id, vehicle_info["course"], "END", 
+                         vehicle_info["line_name"], vehicle_info["destination"])
+            del active_vehicles[vehicle_id]
+        
+        # Original save_trip logic
+        for v in vehicles:
+            vehicle_label = str(v.get("ID", "Unknown"))
+            trip_id = str(v.get("Course", "Unknown"))
+            line = v.get("LineName", "Ismeretlen")
+            dest = v.get("FinalStopName", "Ismeretlen")
             lat = v.get("Lat")
             lon = v.get("Lng")
 
             if lat is None or lon is None:
-                continue  # Ha nincs pozíció, nem mentjük
+                continue
 
-            # Mentés a naplóba
             save_trip(trip_id, line, vehicle_label, dest)
 
 # =======================
