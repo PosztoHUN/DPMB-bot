@@ -367,9 +367,12 @@ async def logger_loop():
                          vehicle_info["line_name"], vehicle_info["destination"])
             del active_vehicles[vehicle_id]
         
-        # Original save_trip logic
+        # Original save_trip logic - including IDB/IDC (coupled cars)
         for v in vehicles:
             vehicle_label = str(v.get("ID", "Unknown"))
+            idb_label = str(v.get("IDB", "")) if v.get("IDB") else None
+            idc_label = str(v.get("IDC", "")) if v.get("IDC") else None
+            
             trip_id = str(v.get("Course", "Unknown"))
             line = v.get("LineName", "Ismeretlen")
             dest = v.get("FinalStopName", "Ismeretlen")
@@ -379,7 +382,16 @@ async def logger_loop():
             if lat is None or lon is None:
                 continue
 
+            # Log main vehicle (ID)
             save_trip(trip_id, line, vehicle_label, dest)
+            
+            # Log IDB (second car) if it exists
+            if idb_label and idb_label != "0" and idb_label != "Unknown":
+                save_trip(trip_id, line, idb_label, dest)
+            
+            # Log IDC (third car) if it exists
+            if idc_label and idc_label != "0" and idc_label != "Unknown":
+                save_trip(trip_id, line, idc_label, dest)
 
 # =======================
 # GIT SYNC - AUTO PUSH TO GITHUB VIA API
@@ -391,11 +403,16 @@ async def git_sync_logs():
         github_token = os.getenv("GITHUB_TOKEN", "")
         github_repo = os.getenv("GITHUB_REPO", "PostelUN/DPMB-bot")  # owner/repo
         
+        print(f"[GIT_SYNC] Starting sync...")
+        print(f"[GIT_SYNC] Token set: {bool(github_token)}")
+        print(f"[GIT_SYNC] Repo: {github_repo}")
+        
         if not github_token:
-            print("⚠ GITHUB_TOKEN not set - skipping sync")
+            print("[GIT_SYNC] ⚠ GITHUB_TOKEN not set - skipping sync")
             return
         
         if not os.path.isdir("logs"):
+            print("[GIT_SYNC] ⚠ logs/ directory doesn't exist")
             return  # No logs yet
         
         # Find all log files
@@ -406,7 +423,10 @@ async def git_sync_logs():
                     file_path = os.path.join(root, file)
                     log_files.append(file_path)
         
+        print(f"[GIT_SYNC] Found {len(log_files)} log files")
+        
         if not log_files:
+            print("[GIT_SYNC] No .txt files to sync")
             return  # No files to sync
         
         headers = {
@@ -415,6 +435,8 @@ async def git_sync_logs():
         }
         
         synced_count = 0
+        failed_count = 0
+        
         for file_path in log_files:
             try:
                 # Read file content
@@ -456,16 +478,17 @@ async def git_sync_logs():
                 if response.status_code in [200, 201]:
                     synced_count += 1
                 else:
-                    print(f"✗ Failed to sync {file_path}: {response.status_code} - {response.text}")
+                    failed_count += 1
+                    print(f"[GIT_SYNC] ✗ Failed to sync {file_path}: {response.status_code} - {response.text[:100]}")
             
             except Exception as e:
-                print(f"✗ Error syncing {file_path}: {e}")
+                failed_count += 1
+                print(f"[GIT_SYNC] ✗ Error syncing {file_path}: {e}")
         
-        if synced_count > 0:
-            print(f"✓ Synced {synced_count} log files to GitHub at {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+        print(f"[GIT_SYNC] ✓ Synced {synced_count} files, {failed_count} failed at {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     
     except Exception as e:
-        print(f"✗ GitHub sync error: {e}")
+        print(f"[GIT_SYNC] ✗ Fatal error: {e}")
 
 # =======================
 # PARANCSOK
