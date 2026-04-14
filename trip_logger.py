@@ -21,12 +21,21 @@ FETCH_INTERVAL = 30  # seconds - adjust based on API rate limits
 ACTIVITY_THRESHOLD = 300  # seconds - if inactive for 5 min, consider trip ended
 LOG_DIR = "logs"
 
-# Setup logging
+# Setup logging - SILENT MODE for 24/7 operation
+# Only log errors to console, everything to file
 logging.basicConfig(
-    level=logging.INFO,
+    level=logging.WARNING,  # Only show WARNING and ERROR on console
     format='%(asctime)s - %(levelname)s - %(message)s'
 )
 logger = logging.getLogger(__name__)
+
+# Optional: Log debug info to a file instead of console
+if os.getenv('DEBUG_LOGS') == '1':
+    file_handler = logging.FileHandler('trip_logger_debug.log')
+    file_handler.setLevel(logging.DEBUG)
+    formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+    file_handler.setFormatter(formatter)
+    logger.addHandler(file_handler)
 
 # =======================
 # STATE TRACKING
